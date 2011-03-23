@@ -3,6 +3,8 @@
 /target-*
 /classes
 project/boot/
+target/
+/lib_managed/
 *.iml
 *.ipr
 *.iws
