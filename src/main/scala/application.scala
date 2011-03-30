@@ -250,7 +250,8 @@ trait Application
   
   def main(cmdline: Array[String]) {
     try {
-      _opts = Options.parse(argInfos, cmdline: _*)
+      _opts = Options.parse(scala.collection.immutable.HashMap.newBuilder ++= mainArgs.map(x => (x.name, x)) result,
+                            argInfos, cmdline: _*)
       callWithOptions()
     }
     catch {

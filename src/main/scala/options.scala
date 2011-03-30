@@ -23,7 +23,7 @@ object Options
    * Currently the dumbest option parser in the entire world, but
    * oh well.
    */
-  def parse(argInfos: HashSet[ArgInfo], args: String*): Options = {
+  def parse(mainArgs: scala.collection.immutable.Map [String, MainArg], argInfos: HashSet[ArgInfo], args: String*): Options = {
     import mutable._;
     val optionsStack = new ArrayStack[String];
     val options = new OpenHashMap[String, String];
@@ -39,7 +39,12 @@ object Options
       }
 
     def addOption(name: String) = {
-      if (optionsStack.isEmpty) options(name) = True;
+      if (mainArgs.isDefinedAt(name) && mainArgs(name).isBoolean) {
+        options(name) = True;
+      }
+      else if (optionsStack.isEmpty) {
+        options(name) = True;
+      }
       else {
         val next = optionsStack.pop;
         next match {
