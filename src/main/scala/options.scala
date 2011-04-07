@@ -14,7 +14,7 @@ object Options
 {
   private val ShortOption = """-(\w)""".r
   private val ShortSquashedOption = """-([^-\s]\w+)""".r
-  private val LongOption = """--(\w+)""".r
+  private val LongOption = """--([-\w]+)""".r
   private val OptionTerminator = "--"
   private val True = "true";
 
@@ -67,7 +67,9 @@ object Options
           if (isSwitch(c)) addSwitch(c)
           else addOption(name)
         
-        case LongOption(name) => addOption(name);
+        // Treat hyphens as if they were underscores, so we can have --switches-like-this as well as --switches_like_this
+        case LongOption(name) => addOption (name.replaceAll ("-", "_"));
+        
         case OptionTerminator => optionsStack.drain(arguments += _);
         case x => arguments += x; 
       }  
