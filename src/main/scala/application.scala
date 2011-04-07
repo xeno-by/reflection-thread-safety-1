@@ -233,6 +233,15 @@ trait Application
       usageError("missing required option%s: %s".format(s, missingStr))
     }
     
+    // verify all options used are legitimate options
+    val illegitimateArgs = options.keySet filter (n => mainArgs forall (_.name != n))
+    if (!illegitimateArgs.isEmpty) {
+      val illegitimateStr = illegitimateArgs map ("--" + _) mkString " "
+      val s = if (illegitimateArgs.size == 1) "" else "s"
+      
+      usageError("invalid option%s found: %s".format(s, illegitimateStr))
+    }
+    
     def determineValue(ma: MainArg): AnyRef = {
       val MainArg(name, _, tpe) = ma
       def isPresent = options contains name
