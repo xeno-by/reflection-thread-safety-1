@@ -1,10 +1,10 @@
 import sbt._
 
 class OptionalProject(info: ProjectInfo) extends DefaultProject(info) {  
-  val localMaven   = "Local Maven" at "file://"+Path.userHome+"/.m2/repository"
-  val localIvy     = "Local Ivy" at "file://"+Path.userHome+"/.ivy2/local"
-  
   val paranamer  = "com.thoughtworks.paranamer" % "paranamer" % "2.2.1"
-  
-  val scalatest  = "org.scalatest" % "scalatest" % "1.3"
+  val scalatest  = buildScalaVersion match {
+    case "2.9.0" | "2.9.0-1" => "org.scalatest" % "scalatest_2.9.0" % "1.4.1"
+    case "2.8.0" | "2.8.1"   => "org.scalatest" % "scalatest_2.8.1" % "1.5"
+    case s => error("Unsupported version: " + s)
+  }
 }
