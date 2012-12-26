@@ -1,10 +1,12 @@
 name := "Optional"
 
-version := "0.2"
+version := "0.3"
 
 organization := "Paul Phillips"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "1.8" % "test"
+scalaVersion := "2.10.0"
+
+libraryDependencies += "org.scalatest" % "scalatest_2.10" % "1.9.1" % "test"
 
 libraryDependencies += "com.thoughtworks.paranamer" % "paranamer" % "2.2.1"
 
