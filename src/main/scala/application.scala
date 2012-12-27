@@ -1,6 +1,5 @@
 package optional
 
-//import com.thoughtworks.paranamer.BytecodeReadingParanamer
 import java.io.File.separator
 import collection.mutable.HashSet
 
