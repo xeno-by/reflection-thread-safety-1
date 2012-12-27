@@ -1,7 +1,7 @@
 package optional.examples
 
 import java.io.File
-import java.lang.reflect
+import scala.reflect.runtime.universe.MethodSymbol
 
 //
 // A fancier example showing some other features.
@@ -13,11 +13,10 @@ class Whatever(x: String) {
   override def toString() = "Whatever(" + x + ")"
 }
 
-object Fancy extends optional.Application
-{
+object Fancy extends optional.Application {
   // Function1[String,T] methods in the class will be used to convert arguments
   // to the desired type, unless isConversionMethod excludes them.
-  override def isConversionMethod(m: reflect.Method) = m.getName != "excludedConversionMethod"
+  override def isConversionMethod(m: MethodSymbol) = m.name.decoded != "excludedConversionMethod"
   
   // this one will be ignored
   def excludedConversionMethod(s: String): List[Int] = List(1,2,3)
