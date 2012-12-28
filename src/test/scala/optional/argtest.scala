@@ -87,9 +87,31 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
   }
   
   test("Making an optional String argument using typeOf") {
-    
+    val origType = typeOf[Option[String]]
+    val arg = MainArg("test", origType)
+    arg should equivTo (OptArg("test", typeOf[String], origType))
   }
+  
+  test("Making an optional String argument using an extracted type") {
+    val origType = typeOfFirstArg("optionalStringMethod")
+    val arg = MainArg("test", origType)
+    arg should equivTo (OptArg("test", typeOf[String], origType))
+  }
+  
+  test("Making an optional BigDecimal argument using typeOf") {
+    val origType = typeOf[Option[scala.math.BigDecimal]]
+    val arg = MainArg("test", origType)
+    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal], origType))
+  }
+  
+  test("Making an optional BigDecimal argument using an extracted type") {
+    val origType = typeOfFirstArg("optionalBigDecimalMethod")
+    val arg = MainArg("test", origType)
+    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal], origType))
+  }
+  
 //2. case class ReqArg(name: String, tpe: Type) extends MainArg  
+  
 //3. case class PosArg(name: String, tpe: Type, override val pos: Int) extends MainArg  
 //4. case class BoolArg(name: String) extends MainArg  
   test("Making a boolean argument using typeOf[Boolean]") {

@@ -76,7 +76,11 @@ sealed abstract class MainArg {
   def isPositional = pos > -1
   def isBoolean = false
   
-  def =:=(other: MainArg): Boolean = name == other.name && tpe =:= other.tpe && isOptional == other.isOptional && pos == other.pos
+  def =:=(other: MainArg): Boolean = name == other.name && 
+                                     tpe =:= other.tpe &&
+                                     originalType =:= other.originalType &&
+                                     isOptional == other.isOptional && 
+                                     pos == other.pos
 }
 
 /**
@@ -188,6 +192,9 @@ trait Application {
   registry.register(s => java.lang.Integer.parseInt(s))
   registry.register(s => java.lang.Double.parseDouble(s))
   registry.register(s => java.lang.Boolean.parseBoolean(s))
+  registry.register(s => scala.math.BigDecimal(s))
+  registry.register(s => scala.math.BigInt(s))
+  
   
   
   /**
