@@ -1,8 +1,10 @@
+package optional
+
 import org.scalatest.FunSuite
 import org.scalatest.matchers.ShouldMatchers
 
 
-class BooleanStubApp extends optional.Application {
+class BooleanStubApp extends Application {
   var _option: Boolean = _
   var _args: List[String] = _
   

@@ -9,23 +9,32 @@ object Converter {
   }
 }
 
+case class DuplicateConverter(existing: Type, duplicate: Type) 
+     extends Exception("Cannot register %s because %s is already registered".format(existing.toString, duplicate.toString))
+
 /**
  * Utility class that 
  */
 class ConverterRegistry[I](implicit val itt: TypeTag[I]) {
-  import scala.collection.mutable.{ HashMap => MHashMap }
-  private val converters = new MHashMap[Type, I => Any]()
+  import scala.collection.mutable.{ ArrayBuffer }
+  
+  private case class Entry(rt: Type, f: I => Any)
+  private val converters = new ArrayBuffer[Entry]
+  private def getEntry(rt: Type) = converters.find(e => e.rt =:= rt)
   
   def register[R](f: I => R)(implicit rtt: TypeTag[R]) {
     val rt: Type = rtt.tpe
-    converters.put(rt, f)
+    getEntry(rt) match {
+      case Some(e) => throw DuplicateConverter(e.rt, rt)
+      case None => converters.append(Entry(rt, f)) 
+    }
   }
   def get[R](implicit rtt: TypeTag[R]): Option[I => R] = {
     val rt: Type = rtt.tpe
-    converters.get(rt) match {
-      case Some(cf) => Some(cf.asInstanceOf[I => R])
+    getEntry(rt) match {
+      case Some(e) => Some(e.f.asInstanceOf[I => R])
       case None => None
     }
   }
-  def get(rt: Type): Option[I => Any] = converters.get(rt)
+  def get(rt: Type): Option[I => Any] = getEntry(rt).map(_.f)
 }

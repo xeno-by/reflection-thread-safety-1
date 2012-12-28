@@ -7,11 +7,14 @@ case class Options(
   options: Map[String, String],
   args: List[String],
   rawArgs: List[String]
-)
+) {
+  if (args eq null) throw new Exception("args is null")
+  if (options eq null) throw new Exception("options is null")
+  if (rawArgs eq null) throw new Exception("rawArgs is null")
+}
 case class ArgInfo(short: Char, long: String, isSwitch: Boolean, help: String)
 
-object Options
-{
+object Options {
   private val ShortOption = """-(\w)""".r
   private val ShortSquashedOption = """-([^-\s]\w+)""".r
   private val LongOption = """--([-\w]+)""".r

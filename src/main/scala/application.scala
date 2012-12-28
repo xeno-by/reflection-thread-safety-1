@@ -9,12 +9,7 @@ import scala.reflect.runtime.currentMirror
 case class DesignError(msg: String) extends Error(msg)
 case class UsageError(msg: String) extends RuntimeException(msg)
 
-object Util {
-  val CString       = typeOf[String]
-  val CInteger      = typeOf[Int]
-  val CBoolean      = typeOf[Boolean]
-  val CArrayString  = typeOf[Array[String]]
-  
+object Util {  
   val Argument = """^arg(\d+)$""".r
   
   def cond[T](x: T)(f: PartialFunction[T, Boolean]) = (f isDefinedAt x) && f(x)
@@ -29,9 +24,20 @@ object Util {
 }
 import Util._
 
+private class TypeExtractor(val t: Type) {
+  def unapply(x: Any): Option[Type] = x match {
+    case tpe: Type if tpe =:= t => Some(t)
+    case _ => None
+  }
+}
+
+private object BooleanType extends TypeExtractor(typeOf[Boolean])
+private object StringType extends TypeExtractor(typeOf[String])
+private object ArrayStringType extends TypeExtractor(typeOf[Array[String]])
+
 private object OptionType {
   def unapply(x: Any): Option[Type] = x match {
-    case tpe: Type if tpe.erasure == typeOf[Option[Any]].erasure => {
+    case tpe: Type if tpe.erasure =:= typeOf[Option[Any]].erasure => {
       val arg = typeArgs(tpe).head
       Some(arg)
     }
@@ -40,8 +46,9 @@ private object OptionType {
 }
 
 object MainArg {
+  private val bt = typeOf[Boolean]
   def apply(name: String, tpe: Type): MainArg = tpe match {
-    case CBoolean => BoolArg(name)
+    case BooleanType(_) => BoolArg(name)
     case OptionType(t)  => OptArg(name, t, tpe)
     case _              =>
       name match {      
@@ -52,7 +59,7 @@ object MainArg {
 
   def unapply(x: Any): Option[(String, Type, Type)] = x match {
     case OptArg(name, tpe, originalType)  => Some(name, tpe, originalType)
-    case BoolArg(name)                    => Some(name, CBoolean, CBoolean)
+    case BoolArg(name)                    => Some(name, bt, bt)
     case ReqArg(name, tpe)                => Some(name, tpe, tpe)
     case PosArg(name, tpe, num)           => Some(name, tpe, tpe)
   }
@@ -68,8 +75,17 @@ sealed abstract class MainArg {
   def pos: Int = -1
   def isPositional = pos > -1
   def isBoolean = false
+  
+  def =:=(other: MainArg): Boolean = name == other.name && tpe =:= other.tpe && isOptional == other.isOptional && pos == other.pos
 }
 
+/**
+ * Definition for an optional argument
+ * 
+ * @name the name of the argument
+ * @tpe the type of the argument without the wrapping Option, e.g. Int for Option[Int]
+ * @originalType the type of the argument as defined on the main method
+ */
 case class OptArg(name: String, tpe: Type, originalType: Type) extends MainArg {
   val isOptional = true
   def usage = "[--%s %s]".format(name, stringForType(tpe))
@@ -89,7 +105,7 @@ case class PosArg(name: String, tpe: Type, override val pos: Int) extends MainAr
 
 case class BoolArg(name: String) extends MainArg {
   override def isBoolean = true
-  val tpe, originalType = CBoolean
+  val tpe, originalType = typeOf[Boolean]
   val isOptional = true
   def usage = "[--%s]".format(name)
 }
@@ -104,7 +120,11 @@ trait Application {
   /** Public methods.
    */
   def getRawArgs()  = opts.rawArgs
-  def getArgs()     = opts.args
+  def getArgs()     = {
+     val r = opts.args
+     if (r eq null) throw new Exception("How did opts.args end up null?")
+     r
+  }
   
   /** These methods can be overridden to modify application behavior.
    */
@@ -161,8 +181,8 @@ trait Application {
     val tpe = p.typeSignature
     MainArg(name, tpe)
   }
-  private lazy val reqArgs          = mainArgs filter (x => !x.isOptional)
-  private def posArgCount           = mainArgs filter (_.isPositional) size
+  private lazy val reqArgs          = mainArgs.filter(x => !x.isOptional)
+  private def posArgCount           = mainArgs.filter(_.isPositional).size
 
   private val registry = new ConverterRegistry[String]
   registry.register(s => java.lang.Integer.parseInt(s))
@@ -179,9 +199,9 @@ trait Application {
     def surprise  = usageError("Unexpected type: %s (%s)".format(tpe, tpe.getClass))
     
     tpe match {
-      case CString          => value
-      case CArrayString     => value split separator
-      case OptionType(t)    => Some(coerceTo(name, t)(value))
+      case StringType(_)          => value
+      case ArrayStringType(_)     => value split separator
+      case OptionType(t)          => Some(coerceTo(name, t)(value))
       case _ => registry.get(tpe) match {
         case Some(f) => try {
           f(value)
@@ -194,13 +214,16 @@ trait Application {
   }
 
   private var _opts: Options = null
-  lazy val opts = _opts
+  lazy val opts = {
+    if (_opts eq null) throw new Exception("somehow _opts ended up being null")
+    _opts 
+  }
   
   private val argInfos = new HashSet[ArgInfo]()
 
   def callWithOptions(): Unit = {
     import opts._
-    def missing(s: String)  = usageError("Missing required option '%s'".format(s))
+    def missing(s: String) = usageError("Missing required option '%s'".format(s))
 
     // verify minimum quantity of positional arguments
     if (args.size < posArgCount)
@@ -209,7 +232,7 @@ trait Application {
     // verify all required options are present
     val missingArgs = reqArgs filter (x => !(options contains x.name) && !(x.name matches """^arg\d+$"""))
     if (!missingArgs.isEmpty) {
-      val missingStr = missingArgs map ("--" + _.name) mkString " "        
+      val missingStr = missingArgs.map(a => "--" + a.name) mkString " "        
       val s = if (missingArgs.size == 1) "" else "s"
       
       usageError("missing required option%s: %s".format(s, missingStr))
@@ -235,7 +258,6 @@ trait Application {
       else                      missing(name)
     }
     
-    //mainMethod.invoke(this, (mainArgs map determineValue).toArray : _*)
     val mainMirror = {
       val im = currentMirror.reflect(this)
       im.reflectMethod(mainMethod)
