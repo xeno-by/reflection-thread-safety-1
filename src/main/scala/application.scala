@@ -49,7 +49,7 @@ object MainArg {
   private val bt = typeOf[Boolean]
   def apply(name: String, tpe: Type): MainArg = tpe match {
     case BooleanType(_) => BoolArg(name)
-    case OptionType(t)  => OptArg(name, t, tpe)
+    case OptionType(t)  => OptArg(name, t)
     case _              =>
       name match {      
         case Argument(num)  => PosArg(name, tpe, num.toInt)
@@ -78,7 +78,7 @@ sealed abstract class MainArg {
  * @tpe the type of the argument without the wrapping Option, e.g. Int for Option[Int]
  * @originalType the type of the argument as defined on the main method
  */
-case class OptArg(name: String, tpe: Type, originalType: Type) extends MainArg {
+case class OptArg(name: String, tpe: Type) extends MainArg {
   def isOptional = true
   def usage = "[--%s %s]".format(name, stringForType(tpe))
 }
@@ -246,7 +246,7 @@ trait Application {
         case PosArg(name, tpe, pos) => coerceTo(name, tpe)(args(pos - 1))
         case BoolArg(_) => isPresent
         case ReqArg(name, tpe) => if (isPresent) coerceTo(name, tpe)(options(name)) else missing(name)
-        case OptArg(name, tpe, _) => if (isPresent) Some(coerceTo(name, tpe)(options(name))) else None
+        case OptArg(name, tpe) => if (isPresent) Some(coerceTo(name, tpe)(options(name))) else None
       }
     }
     

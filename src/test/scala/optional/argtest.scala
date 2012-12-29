@@ -77,37 +77,37 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
   test("Making an optional Int argument using typeOf") {
     val origType = typeOf[Option[Int]]
     val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[Int], origType))
+    arg should equivTo (OptArg("test", typeOf[Int]))
   }
   
   test("Making an optional Int argument using an extracted type") {
     val origType = typeOfFirstArg("optionalIntMethod")
     val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[Int], origType))
+    arg should equivTo (OptArg("test", typeOf[Int]))
   }
   
   test("Making an optional String argument using typeOf") {
     val origType = typeOf[Option[String]]
     val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[String], origType))
+    arg should equivTo (OptArg("test", typeOf[String]))
   }
   
   test("Making an optional String argument using an extracted type") {
     val origType = typeOfFirstArg("optionalStringMethod")
     val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[String], origType))
+    arg should equivTo (OptArg("test", typeOf[String]))
   }
   
   test("Making an optional BigDecimal argument using typeOf") {
     val origType = typeOf[Option[scala.math.BigDecimal]]
     val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal], origType))
+    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal]))
   }
   
   test("Making an optional BigDecimal argument using an extracted type") {
     val origType = typeOfFirstArg("optionalBigDecimalMethod")
     val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal], origType))
+    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal]))
   }
   
 //2. case class ReqArg(name: String, tpe: Type) extends MainArg  
