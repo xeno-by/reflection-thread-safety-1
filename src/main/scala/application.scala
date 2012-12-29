@@ -66,21 +66,16 @@ object MainArg {
 }
 
 sealed abstract class MainArg {
+  //def term: TermSymbol
+  //final def name: String = term.name.decoded
   def name: String
   def tpe: Type
-  def originalType: Type
   def isOptional: Boolean
   def usage: String
   
-  def pos: Int = -1
-  def isPositional = pos > -1
-  def isBoolean = false
-  
   def =:=(other: MainArg): Boolean = name == other.name && 
                                      tpe =:= other.tpe &&
-                                     originalType =:= other.originalType &&
-                                     isOptional == other.isOptional && 
-                                     pos == other.pos
+                                     isOptional == other.isOptional
 }
 
 /**
@@ -91,26 +86,23 @@ sealed abstract class MainArg {
  * @originalType the type of the argument as defined on the main method
  */
 case class OptArg(name: String, tpe: Type, originalType: Type) extends MainArg {
-  val isOptional = true
+  def isOptional = true
   def usage = "[--%s %s]".format(name, stringForType(tpe))
 }
 
 case class ReqArg(name: String, tpe: Type) extends MainArg {
-  val originalType = tpe
-  val isOptional = false
+  def isOptional = false
   def usage = "<%s: %s>".format(name, stringForType(tpe))
 }
 
-case class PosArg(name: String, tpe: Type, override val pos: Int) extends MainArg {
-  val originalType = tpe
-  val isOptional = false
+case class PosArg(name: String, tpe: Type, val pos: Int) extends MainArg {
+  def isOptional = false
   def usage = "<%s>".format(stringForType(tpe))
 }
 
 case class BoolArg(name: String) extends MainArg {
-  override def isBoolean = true
-  val tpe, originalType = typeOf[Boolean]
-  val isOptional = true
+  val tpe = typeOf[Boolean]
+  def isOptional = true
   def usage = "[--%s]".format(name)
 }
 
@@ -186,7 +178,7 @@ trait Application {
     MainArg(name, tpe)
   }
   private lazy val reqArgs          = mainArgs.filter(x => !x.isOptional)
-  private def posArgCount           = mainArgs.filter(_.isPositional).size
+  private def posArgCount           = mainArgs.filter(_.isInstanceOf[PosArg]).size
 
   private val registry = new ConverterRegistry[String]
   registry.register(s => java.lang.Integer.parseInt(s))
@@ -258,11 +250,12 @@ trait Application {
       val MainArg(name, _, tpe) = ma
       def isPresent = options contains name
       
-      if (ma.isPositional)      coerceTo(name, tpe)(args(ma.pos - 1))
-      else if (isPresent)       coerceTo(name, tpe)(options(name))
-      else if (ma.isBoolean)    java.lang.Boolean.FALSE
-      else if (ma.isOptional)   None
-      else                      missing(name)
+      ma match {
+        case PosArg(name, tpe, pos) => coerceTo(name, tpe)(args(pos - 1))
+        case BoolArg(_) => isPresent
+        case ReqArg(_, _) => if (isPresent) coerceTo(name, tpe)(options(name)) else missing(name)
+        case OptArg(_, _, _) => if (isPresent) coerceTo(name, tpe)(options(name)) else None
+      }
     }
     
     val mainMirror = {

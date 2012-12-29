@@ -42,13 +42,11 @@ object Options {
       }
 
     def addOption(name: String) = {
-      if (mainArgs.isDefinedAt(name) && mainArgs(name).isBoolean) {
+      if (mainArgs.isDefinedAt(name) && mainArgs(name).isInstanceOf[BoolArg]) {
         options(name) = True;
-      }
-      else if (optionsStack.isEmpty) {
+      } else if (optionsStack.isEmpty) {
         options(name) = True;
-      }
-      else {
+      } else {
         val next = optionsStack.pop;
         next match {
           case ShortOption(_) | ShortSquashedOption(_) | LongOption(_) | OptionTerminator =>
