@@ -56,13 +56,6 @@ object MainArg {
         case _              => ReqArg(name, tpe)
       }
   }
-
-  def unapply(x: Any): Option[(String, Type, Type)] = x match {
-    case OptArg(name, tpe, originalType)  => Some(name, tpe, originalType)
-    case BoolArg(name)                    => Some(name, bt, bt)
-    case ReqArg(name, tpe)                => Some(name, tpe, tpe)
-    case PosArg(name, tpe, num)           => Some(name, tpe, tpe)
-  }
 }
 
 sealed abstract class MainArg {
@@ -247,14 +240,13 @@ trait Application {
     }
     
     def determineValue(ma: MainArg): Any = {
-      val MainArg(name, _, tpe) = ma
-      def isPresent = options contains name
+      def isPresent = options contains ma.name
       
       ma match {
         case PosArg(name, tpe, pos) => coerceTo(name, tpe)(args(pos - 1))
         case BoolArg(_) => isPresent
-        case ReqArg(_, _) => if (isPresent) coerceTo(name, tpe)(options(name)) else missing(name)
-        case OptArg(_, _, _) => if (isPresent) coerceTo(name, tpe)(options(name)) else None
+        case ReqArg(name, tpe) => if (isPresent) coerceTo(name, tpe)(options(name)) else missing(name)
+        case OptArg(name, tpe, _) => if (isPresent) Some(coerceTo(name, tpe)(options(name))) else None
       }
     }
     
