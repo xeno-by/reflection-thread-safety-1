@@ -84,39 +84,79 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
   test("Making an optional Int argument using an extracted type") {
     checkArgConstruction("optionalIntMethod", term => OptionArg(term, 0))
   }
+  test("Obtaining optional int default value") {
+    val (arg, _) = checkArgConstruction("optionalIntMethod", term => OptionArg(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (None) 
+  }
   
   test("Making an optional String argument using an extracted type") {
     checkArgConstruction("optionalStringMethod", term => OptionArg(term, 0))
+  }
+  test("Obtaining optional string default value") {
+    val (arg, _) = checkArgConstruction("optionalStringMethod", term => OptionArg(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (None) 
   }
   
   test("Making an optional BigDecimal argument using an extracted type") {
     checkArgConstruction("optionalBigDecimalMethod", term => OptionArg(term, 0))
   }
+  test("Obtaining optional big decimal default value") {
+    val (arg, _) = checkArgConstruction("optionalBigDecimalMethod", term => OptionArg(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (None) 
+  }  
   
   def optionalBooleanMethod(arg: Option[Boolean]) = ???
   test("Making an option boolean argument") {
     checkArgConstruction("optionalBooleanMethod", term => OptionArg(term, 0))
   }
+  test("Obtaining optional boolean default value") {
+    val (arg, _) = checkArgConstruction("optionalBooleanMethod", term => OptionArg(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (None) 
+  }  
   
   def intWithDefaultMethod(arg: Int = 5) = ???
   test("Making an Int argument with a default value") {
     checkArgConstruction("intWithDefaultMethod", term => ArgWithDefault(term, 0))
+  }
+  test("Obtaining default int value") {
+    val (arg, _) = checkArgConstruction("intWithDefaultMethod", term => ArgWithDefault(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (5) 
   }
   
   def stringWithDefaultMethod(arg: String = "hello") = ???
   test("Making a string argument with a default value") {
     checkArgConstruction("stringWithDefaultMethod", term => ArgWithDefault(term, 0))
   }
+  test("Obtaining default string value") {
+    val (arg, _) = checkArgConstruction("stringWithDefaultMethod", term => ArgWithDefault(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be ("hello") 
+  }
   
   def bigdecWithDefaultMethod(arg: scala.math.BigDecimal = scala.math.BigDecimal("42")) = ???
   test("Making a BigDecimal argument with a default value") {
     checkArgConstruction("bigdecWithDefaultMethod", term => ArgWithDefault(term, 0))
   }
+  test("Obtaining default big decimal value") {
+    val (arg, _) = checkArgConstruction("bigdecWithDefaultMethod", term => ArgWithDefault(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (scala.math.BigDecimal("42")) 
+  }  
     
   def booleanMethod(arg1: Boolean) = ???
   test("Making a boolean argument using reflection") {
     checkArgConstruction("booleanMethod", term => BoolArg(term, 0))
   }
+  test("Obtaining default boolean value") {
+    val (arg, _) = checkArgConstruction("booleanMethod", term => BoolArg(term, 0))
+    val im = currentMirror.reflect(this)
+    arg.defaultValue(im) should be (false) 
+  }  
   
   def intMethod(arg: Int) = ???
   test("Making a positional int argument") {

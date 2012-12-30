@@ -113,7 +113,14 @@ case class ArgWithDefault(term: TermSymbol, index: Int) extends DefaultArg {
   
   val cliOption = new acli.Option(name, true, usage)
   
-  def defaultValue(m: InstanceMirror): Any = ???
+  def defaultValue(m: InstanceMirror): Any = {
+    val baseMethodSym = term.owner
+    val methodName = "%s$default$%d".format(baseMethodSym.name.decoded, index + 1)
+    val termName = newTermName(methodName)
+    val methSym = m.symbol.toType.member(termName).asMethod
+    val methMirror = m.reflectMethod(methSym)
+    methMirror()
+  }
 }
 
 case class PositionalArg(term: TermSymbol, index: Int) extends MainArg {
@@ -122,11 +129,13 @@ case class PositionalArg(term: TermSymbol, index: Int) extends MainArg {
   def usage = "<%s>".format(stringForType(tpe))
 }
 
-case class BoolArg(term: TermSymbol, index: Int) extends NamedArg {
+case class BoolArg(term: TermSymbol, index: Int) extends DefaultArg {
   val tpe = typeOf[Boolean]
   def isOptional = true
   def usage = "[--%s]".format(name)
   val cliOption = new acli.Option(name, false, "include if true, omit if false")
+  
+  def defaultValue(m: InstanceMirror) = false
 }
 
 
