@@ -81,24 +81,21 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
     (arg.asInstanceOf[T], expected)
   }
 
-//1. case class OptArg(name: String, tpe: Type, originalType: Type) extends MainArg
+
   
   test("Making an optional Int argument using an extracted type") {
-    checkArgConstruction("optionalIntMethod", term => OptArg(term, 0))
+    checkArgConstruction("optionalIntMethod", term => OptionArg(term, 0))
   }
   
   test("Making an optional String argument using an extracted type") {
-    checkArgConstruction("optionalStringMethod", term => OptArg(term, 0))
+    checkArgConstruction("optionalStringMethod", term => OptionArg(term, 0))
   }
   
   test("Making an optional BigDecimal argument using an extracted type") {
-    checkArgConstruction("optionalBigDecimalMethod", term => OptArg(term, 0))
+    checkArgConstruction("optionalBigDecimalMethod", term => OptionArg(term, 0))
   }
   
-//2. case class ReqArg(name: String, tpe: Type) extends MainArg  
-  
-//3. case class PosArg(name: String, tpe: Type, override val pos: Int) extends MainArg  
-//4. case class BoolArg(name: String) extends MainArg  
+
   
   def booleanMethod(arg1: Boolean) = ???
   test("Making a boolean argument using reflection") {
