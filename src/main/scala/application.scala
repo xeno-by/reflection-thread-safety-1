@@ -56,7 +56,7 @@ object MainArg {
       case _ => if (term.isParamWithDefault) {
         ArgWithDefault(term, index)
       } else {
-        PosArg(term, index)
+        PositionalArg(term, index)
       }
     }    
   } 
@@ -65,7 +65,6 @@ object MainArg {
 sealed trait MainArg {
   def term: TermSymbol
   final def name: String = term.name.decoded
-  //def name: String
   def tpe: Type
   def isOptional: Boolean
   def usage: String
@@ -73,7 +72,8 @@ sealed trait MainArg {
   
   def =:=(other: MainArg): Boolean = name == other.name && 
                                      tpe =:= other.tpe &&
-                                     isOptional == other.isOptional
+                                     isOptional == other.isOptional &&
+                                     index == other.index
 }
 
 /**
@@ -117,7 +117,7 @@ case class ArgWithDefault(term: TermSymbol, index: Int) extends DefaultArg {
   def defaultValue(m: InstanceMirror): Any = ???
 }
 
-case class PosArg(term: TermSymbol, index: Int) extends MainArg {
+case class PositionalArg(term: TermSymbol, index: Int) extends MainArg {
   val tpe = term.typeSignature
   def isOptional = false
   def usage = "<%s>".format(stringForType(tpe))

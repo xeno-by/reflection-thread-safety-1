@@ -80,8 +80,6 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
     arg should equivTo (expected)
     (arg.asInstanceOf[T], expected)
   }
-
-
   
   test("Making an optional Int argument using an extracted type") {
     checkArgConstruction("optionalIntMethod", term => OptionArg(term, 0))
@@ -95,11 +93,43 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
     checkArgConstruction("optionalBigDecimalMethod", term => OptionArg(term, 0))
   }
   
-
+  def optionalBooleanMethod(arg: Option[Boolean]) = ???
+  test("Making an option boolean argument") {
+    checkArgConstruction("optionalBooleanMethod", term => OptionArg(term, 0))
+  }
   
+  def intWithDefaultMethod(arg: Int = 5) = ???
+  test("Making an Int argument with a default value") {
+    checkArgConstruction("intWithDefaultMethod", term => ArgWithDefault(term, 0))
+  }
+  
+  def stringWithDefaultMethod(arg: String = "hello") = ???
+  test("Making a string argument with a default value") {
+    checkArgConstruction("stringWithDefaultMethod", term => ArgWithDefault(term, 0))
+  }
+  
+  def bigdecWithDefaultMethod(arg: scala.math.BigDecimal = scala.math.BigDecimal("42")) = ???
+  test("Making a BigDecimal argument with a default value") {
+    checkArgConstruction("bigdecWithDefaultMethod", term => ArgWithDefault(term, 0))
+  }
+    
   def booleanMethod(arg1: Boolean) = ???
   test("Making a boolean argument using reflection") {
     checkArgConstruction("booleanMethod", term => BoolArg(term, 0))
   }
   
+  def intMethod(arg: Int) = ???
+  test("Making a positional int argument") {
+    checkArgConstruction("intMethod", term => PositionalArg(term, 0))
+  }
+  
+  def stringMethod(arg: String) = ???
+  test("Making a positional string argument") {
+    checkArgConstruction("stringMethod", term => PositionalArg(term, 0))
+  }
+  
+  def bigDecimalMethod(arg: scala.math.BigDecimal) = ???
+  test("Making a positional big decimal argument") {
+    checkArgConstruction("bigDecimalMethod", term => PositionalArg(term, 0))
+  }
 }
