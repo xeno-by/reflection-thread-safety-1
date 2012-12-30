@@ -11,8 +11,7 @@ import org.apache.commons.{ cli => acli }
 case class DesignError(msg: String) extends Error(msg)
 case class UsageError(msg: String) extends RuntimeException(msg)
 
-object Util {  
-  val Argument = """^arg(\d+)$""".r
+object Util {
   
   def cond[T](x: T)(f: PartialFunction[T, Boolean]) = (f isDefinedAt x) && f(x)
   def condOpt[T,U](x: T)(f: PartialFunction[T, U]): Option[U] = if (f isDefinedAt x) Some(f(x)) else None
@@ -140,7 +139,7 @@ object Application {
   }
   
   def findMainMethod(obj: AnyRef): MethodMirror = {
-    val im = currentMirror.reflect(this)
+    val im = currentMirror.reflect(obj)
     val s = im.symbol
     val t = s.toType
     val candidateMethods = t.members.collect {
