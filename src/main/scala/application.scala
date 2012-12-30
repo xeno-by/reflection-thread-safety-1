@@ -47,24 +47,38 @@ private object OptionType {
 
 object MainArg {
   private val bt = typeOf[Boolean]
-  def apply(name: String, tpe: Type): MainArg = tpe match {
-    case BooleanType(_) => BoolArg(name)
-    case OptionType(t)  => OptArg(name, t)
-    case _              =>
-      name match {      
-        case Argument(num)  => PosArg(name, tpe, num.toInt)
-        case _              => ReqArg(name, tpe)
+  def apply(term: TermSymbol, pos: Int): MainArg = {
+    val tpe = term.typeSignature
+    tpe match {
+      case BooleanType(_) => BoolArg(term, pos)
+      case OptionType(_)  => OptArg(term, pos)
+      case _ => if (term.isParamWithDefault) {
+        PosArg(term, pos)
+      } else {
+        PosArg(term, pos)
       }
-  }
+    }    
+  } 
 }
 
+//1. A positional argument is an argument that:
+//   a. does not have a default value
+//   b. is not an Option type (default value for option assumed to be None)
+//   c. is not boolean
+//     -- seriously?  it seems like this is an unncessary restriction
+//   * why can't default arguments be positional?
+//2. An optional argument is an argument that:
+//   a. has a default value, or
+//   b. has a type of option (assume default value is None)
+
 sealed abstract class MainArg {
-  //def term: TermSymbol
-  //final def name: String = term.name.decoded
-  def name: String
+  def term: TermSymbol
+  final def name: String = term.name.decoded
+  //def name: String
   def tpe: Type
   def isOptional: Boolean
   def usage: String
+  def pos: Int
   
   def =:=(other: MainArg): Boolean = name == other.name && 
                                      tpe =:= other.tpe &&
@@ -78,22 +92,27 @@ sealed abstract class MainArg {
  * @tpe the type of the argument without the wrapping Option, e.g. Int for Option[Int]
  * @originalType the type of the argument as defined on the main method
  */
-case class OptArg(name: String, tpe: Type) extends MainArg {
+case class OptArg(term: TermSymbol, pos: Int) extends MainArg {
+  val tpe = term.typeSignature match {
+    case OptionType(t) => t
+  }
   def isOptional = true
   def usage = "[--%s %s]".format(name, stringForType(tpe))
 }
 
-case class ReqArg(name: String, tpe: Type) extends MainArg {
+case class ReqArg(term: TermSymbol, pos: Int) extends MainArg {
+  val tpe = term.typeSignature
   def isOptional = false
   def usage = "<%s: %s>".format(name, stringForType(tpe))
 }
 
-case class PosArg(name: String, tpe: Type, val pos: Int) extends MainArg {
+case class PosArg(term: TermSymbol, pos: Int) extends MainArg {
+  val tpe = term.typeSignature
   def isOptional = false
   def usage = "<%s>".format(stringForType(tpe))
 }
 
-case class BoolArg(name: String) extends MainArg {
+case class BoolArg(term: TermSymbol, pos: Int) extends MainArg {
   val tpe = typeOf[Boolean]
   def isOptional = true
   def usage = "[--%s]".format(name)
@@ -165,10 +184,10 @@ trait Application {
       )
   }
   
-  private lazy val mainArgs: List[MainArg] = mainMethod.paramss.flatten.map { p =>
-    val name = p.name.decoded
-    val tpe = p.typeSignature
-    MainArg(name, tpe)
+  private lazy val mainArgs: List[MainArg] = mainMethod.paramss.flatten.zipWithIndex.map { t =>
+    val term = t._1.asTerm
+    val pos = t._2
+    MainArg(term, pos)
   }
   private lazy val reqArgs          = mainArgs.filter(x => !x.isOptional)
   private def posArgCount           = mainArgs.filter(_.isInstanceOf[PosArg]).size
@@ -190,7 +209,7 @@ trait Application {
     def mismatch  = usageError("option --%s expects arg of type '%s' but was given '%s'".format(name, stringForType(tpe), value))
     def surprise  = usageError("Unexpected type: %s (%s)".format(tpe, tpe.getClass))
     
-    tpe match {
+    val r = tpe match {
       case StringType(_)          => value
       case ArrayStringType(_)     => value split separator
       case OptionType(t)          => Some(coerceTo(name, t)(value))
@@ -203,6 +222,8 @@ trait Application {
         case None => surprise
       }
     }
+    if (r == null) throw new Exception("arg %s of type %s and value of %s resulted in null".format(name, tpe.termSymbol.name.decoded, value))
+    r
   }
 
   private var _opts: Options = null
@@ -240,13 +261,13 @@ trait Application {
     }
     
     def determineValue(ma: MainArg): Any = {
-      def isPresent = options contains ma.name
+      def isPresent = options.contains(ma.name)
       
       ma match {
-        case PosArg(name, tpe, pos) => coerceTo(name, tpe)(args(pos - 1))
-        case BoolArg(_) => isPresent
-        case ReqArg(name, tpe) => if (isPresent) coerceTo(name, tpe)(options(name)) else missing(name)
-        case OptArg(name, tpe) => if (isPresent) Some(coerceTo(name, tpe)(options(name))) else None
+        case PosArg(_, pos) => coerceTo(ma.name, ma.tpe)(args(pos))
+        case BoolArg(_, _) => isPresent
+        case ReqArg(_, _) => if (isPresent) coerceTo(ma.name, ma.tpe)(options(ma.name)) else missing(ma.name)
+        case OptArg(_, _) => if (isPresent) Some(coerceTo(ma.name, ma.tpe)(options(ma.name))) else None
       }
     }
     

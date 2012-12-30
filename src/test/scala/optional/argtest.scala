@@ -19,13 +19,13 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
         "'%s' and '%s' are equivalent".format(left.toString, right,toString))
   }
 
-  def typeOfFirstArg(methodName: String): Type = {
+  def termForFirstArg(methodName: String): TermSymbol = {
     val im = currentMirror.reflect(this)
     val clsSym = im.symbol
     val clsTpe = clsSym.toType
     val mthSym = clsTpe.member(newTermName(methodName)).asMethod
     val param = mthSym.paramss.head.head
-    param.typeSignature    
+    param.asTerm 
   }
   
   test("test option type extractor successfully matches using typeOf on an Int") {
@@ -37,8 +37,8 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
   
   def optionalIntMethod(arg: Option[Int]) = ???
   test("test option type extractor successfully matches using an extracted type on an Int") {
-    val tpe = typeOfFirstArg("optionalIntMethod")
-    tpe match {
+    val term = termForFirstArg("optionalIntMethod")
+    term.typeSignature match {
       case OptionType(t) => t should equivTo (typeOf[Int])
     }
   }
@@ -52,8 +52,8 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
   
   def optionalStringMethod(arg: Option[String]) = ???
   test("test option type extractor successfully matches an extracted type on a String") {
-    val tpe = typeOfFirstArg("optionalStringMethod")
-    tpe match {
+    val term = termForFirstArg("optionalStringMethod")
+    term.typeSignature match {
       case OptionType(t) => t should equivTo (typeOf[String])
     }
   }
@@ -67,63 +67,42 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
   
   def optionalBigDecimalMethod(arg: Option[scala.math.BigDecimal]) = ???
   test("test option type extractor successfully matches an extracted type on a BigDecimal") {
-    val tpe = typeOfFirstArg("optionalBigDecimalMethod")
-    tpe match {
+    val term = termForFirstArg("optionalBigDecimalMethod")
+    term.typeSignature match {
       case OptionType(t) => t should equivTo (typeOf[scala.math.BigDecimal])
     }
   }
   
-//1. case class OptArg(name: String, tpe: Type, originalType: Type) extends MainArg
-  test("Making an optional Int argument using typeOf") {
-    val origType = typeOf[Option[Int]]
-    val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[Int]))
+  def checkArgConstruction[T <: MainArg](methName: String, ef: TermSymbol => T): (T, T) = {
+    val term = termForFirstArg(methName)
+    val arg = MainArg(term, 0)
+    val expected = ef(term)
+    arg should equivTo (expected)
+    (arg.asInstanceOf[T], expected)
   }
+
+//1. case class OptArg(name: String, tpe: Type, originalType: Type) extends MainArg
   
   test("Making an optional Int argument using an extracted type") {
-    val origType = typeOfFirstArg("optionalIntMethod")
-    val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[Int]))
-  }
-  
-  test("Making an optional String argument using typeOf") {
-    val origType = typeOf[Option[String]]
-    val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[String]))
+    checkArgConstruction("optionalIntMethod", term => OptArg(term, 0))
   }
   
   test("Making an optional String argument using an extracted type") {
-    val origType = typeOfFirstArg("optionalStringMethod")
-    val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[String]))
-  }
-  
-  test("Making an optional BigDecimal argument using typeOf") {
-    val origType = typeOf[Option[scala.math.BigDecimal]]
-    val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal]))
+    checkArgConstruction("optionalStringMethod", term => OptArg(term, 0))
   }
   
   test("Making an optional BigDecimal argument using an extracted type") {
-    val origType = typeOfFirstArg("optionalBigDecimalMethod")
-    val arg = MainArg("test", origType)
-    arg should equivTo (OptArg("test", typeOf[scala.math.BigDecimal]))
+    checkArgConstruction("optionalBigDecimalMethod", term => OptArg(term, 0))
   }
   
 //2. case class ReqArg(name: String, tpe: Type) extends MainArg  
   
 //3. case class PosArg(name: String, tpe: Type, override val pos: Int) extends MainArg  
 //4. case class BoolArg(name: String) extends MainArg  
-  test("Making a boolean argument using typeOf[Boolean]") {
-    val arg = MainArg("test", typeOf[Boolean])
-    arg should equivTo (BoolArg("test"))
-  }
   
   def booleanMethod(arg1: Boolean) = ???
   test("Making a boolean argument using reflection") {
-    val pt = typeOfFirstArg("booleanMethod")
-    val arg = MainArg("test", pt)
-    arg should equivTo (BoolArg("test"))
+    checkArgConstruction("booleanMethod", term => BoolArg(term, 0))
   }
   
 }
