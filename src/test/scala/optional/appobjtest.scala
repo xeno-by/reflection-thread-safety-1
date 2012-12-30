@@ -70,4 +70,44 @@ class ApplicationObjectTestSuite extends FunSuite with ShouldMatchers {
   test("Finding a user main method should succeed in a well-formed object") {
     val mm = Application.findMainMethod(GoodMains)
   }
+  test("Testing argument extraction on a simple case") {
+    val mm = Application.findMainMethod(GoodMains)
+    val s = mm.symbol
+    s.paramss.length should be (1)
+    val fl = s.paramss.head
+    fl.length should be (2)
+    val at = fl(0)
+    val bt = fl(1)
+    val args = Application.extractArgs(s)
+    args.length should be (2)
+    val a = args(0)
+    a.name should be ("a")
+    a.isInstanceOf[PositionalArg] should be (true)
+    val b = args(1)
+    b.name should be ("b")
+    b.isInstanceOf[PositionalArg] should be (true)
+  }
+  
+  object ComplexMain {
+    def main(a: Int, b: Boolean, c: String, d: Option[Int], e: String = "Hello"): Unit = {}
+  }
+  test("Testing argument extraction on a complex main") {
+    val mm = Application.findMainMethod(ComplexMain)
+    val args = Application.extractArgs(mm.symbol)
+    args.length should be (5)
+    args match {
+      case List(a, b, c, d, e) => {
+        a.name should be ("a")
+        b.name should be ("b")
+        c.name should be ("c")
+        d.name should be ("d")
+        e.name should be ("e")
+        a.isInstanceOf[PositionalArg] should be (true)
+        b.isInstanceOf[BoolArg] should be (true)
+        c.isInstanceOf[PositionalArg] should be (true)
+        d.isInstanceOf[OptionArg] should be (true)
+        e.isInstanceOf[ArgWithDefault] should be (true)
+      }
+    }
+  }
 }
