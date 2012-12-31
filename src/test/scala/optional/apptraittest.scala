@@ -63,4 +63,26 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     Test3.main(args)
   }
   
+  class Test4(ev1: Boolean, ev2: Boolean) extends Application {
+    def main(p1: Boolean, p2: Boolean) {
+      p1 should be (ev1)
+      p2 should be (ev2)
+    }
+  }
+  test("boolean flags with both present") {
+    val Test4 = new Test4(true, true)
+    val args = Array("-p1", "-p2")
+    Test4.main(args)
+  }
+  test("boolean flags with both missing") {
+    val Test4 = new Test4(false, false)
+    val args = Array[String]()
+    Test4.main(args)
+  }
+  test("boolean flags with one missing, one present") {
+    val Test4 = new Test4(false, true)
+    val args = Array[String]("-p2")
+    Test4.main(args)
+  }
+  
 }

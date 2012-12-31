@@ -252,6 +252,7 @@ trait Application {
         registry.get(arg.tpe) match {
           case Some(cf) => {
             arg match {
+              case barg: BoolArg => if (parsed.hasOption(barg.name)) true else false
               case oarg: OptionArg => if (parsed.hasOption(oarg.name)) Some(cf(parsed.getOptionValue(oarg.name))) else None
               case darg: ArgWithDefault => if (parsed.hasOption(darg.name)) {
                 cf(parsed.getOptionValue(darg.name))
