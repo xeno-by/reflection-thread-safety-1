@@ -11,6 +11,8 @@ import org.apache.commons.{ cli => acli }
 case class DesignError(msg: String) extends Error(msg)
 case class UsageError(msg: String) extends RuntimeException(msg)
 
+import scala.util.{ Try, Success, Failure }
+
 object Util {
   
   def cond[T](x: T)(f: PartialFunction[T, Boolean]) = (f isDefinedAt x) && f(x)
@@ -65,6 +67,7 @@ sealed trait MainArg {
   def term: TermSymbol
   final def name: String = term.name.decoded
   def tpe: Type
+  final def typeName = tpe.typeSymbol.name.decoded
   def isOptional: Boolean
   def usage: String
   def index: Int
@@ -183,7 +186,15 @@ object Application {
   }
   
   def registerDefaultConversions(r: ConverterRegistry[String]) {
-    r.register(s => java.lang.Integer.parseInt(s))
+    r.register { s => 
+      Try(java.lang.Integer.parseInt(s)) match {
+        case Success(i) => i
+        case Failure(e) => {
+          val msg = "the value \"%s\" could not be converted into an integer".format(s)
+          throw new NumberFormatException(msg).initCause(e)
+        }
+      }       
+    }
     r.register(s => java.lang.Double.parseDouble(s))
     r.register(s => java.lang.Boolean.parseBoolean(s))
     r.register(s => scala.math.BigDecimal(s))
@@ -209,16 +220,20 @@ trait Application {
    */
   protected def makeParser: acli.CommandLineParser = new acli.PosixParser
   
+  /** override this method to register any additional converters for processing arguments */
   protected def registerCustomConversions(r: ConverterRegistry[String]) {
     // nothing
   }
+  
+  /** override to return a false value in order to have usage errors thrown (useful for testing) */
+  protected def catchUsageError: Boolean = true
   
   def main(cmdline: Array[String]) {
     try {
       val f = buildCommandFunction(cmdline)
       f()
     } catch {
-      case UsageError(msg) => print(msg) 
+      case UsageError(msg) if catchUsageError => print(msg) 
       case ite: java.lang.reflect.InvocationTargetException => {
         val toThrow = if (ite.getTargetException ne null) ite.getTargetException else ite
         throw toThrow
@@ -248,23 +263,46 @@ trait Application {
       registerCustomConversions(registry)
       val im = currentMirror.reflect(this)
       
-      val argArray: Array[Any] = args.map { arg => 
+      val processedArgs: List[Try[Any]] = args.map { arg => 
         registry.get(arg.tpe) match {
           case Some(cf) => {
             arg match {
-              case barg: BoolArg => if (parsed.hasOption(barg.name)) true else false
-              case oarg: OptionArg => if (parsed.hasOption(oarg.name)) Some(cf(parsed.getOptionValue(oarg.name))) else None
+              case barg: BoolArg => Success(if (parsed.hasOption(barg.name)) true else false)
+              case oarg: OptionArg => if (parsed.hasOption(oarg.name)) {
+                val sv = parsed.getOptionValue(oarg.name)
+                convertArg(s => Some(cf(s)), oarg, sv) 
+              } else Success(None)
               case darg: ArgWithDefault => if (parsed.hasOption(darg.name)) {
-                cf(parsed.getOptionValue(darg.name))
+                val sv = parsed.getOptionValue(darg.name)
+                convertArg(cf, darg, sv)
               } else {
-                darg.defaultValue(im)
+                Success(darg.defaultValue(im))
               }
-              case narg: NamedArg => cf(parsed.getOptionValue(narg.name))
-              case parg: PositionalArg => cf(parsed.getArgs()(positionalArgIndices(parg.name)))
+              case narg: NamedArg => {
+                val sv = parsed.getOptionValue(narg.name)
+                convertArg(cf, narg, sv) 
+              }
+              case parg: PositionalArg => {
+                val sv = parsed.getArgs()(positionalArgIndices(parg.name))
+                convertArg(cf, parg, sv)
+              }
             }
           }
           case None => throw DesignError("No conversion to a %s for argument %s defined".format(arg.tpe.typeSymbol.name.decoded, arg.name))
         }
+      }
+      
+      if (processedArgs.exists(_.isFailure)) {
+        val failures = processedArgs.collect {
+          case Failure(e) => e
+        }
+        val msgs = failures.mkString("\n")
+        val msg = if(failures.size > 1) "%d errors occurred while processing arguments\n%s".format(failures.size, msgs) else msgs
+        throw UsageError(msg)
+      }
+      
+      val argArray = processedArgs.collect {
+        case Success(a) => a
       }.toArray
       
       () => {
@@ -273,6 +311,14 @@ trait Application {
     }
   }
   
+  private def convertArg(cf: String => Any, arg: MainArg, sv: String) = Try(cf(sv)) match {
+    case Success(r) => Success(r)
+    case Failure(e) => {
+      val msg = "Malformed argument value \"%s\" for %s of type %s:\n\t%s\n\tUsage: %s".format(sv, arg.name, arg.typeName, e.getMessage, arg.usage)
+      val ue = UsageError(msg)
+      Failure(ue)
+    }
+  }
 }
 
 
