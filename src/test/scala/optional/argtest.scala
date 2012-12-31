@@ -7,6 +7,8 @@ import org.scalatest.matchers.{ Matcher, MatchResult }
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.currentMirror
 
+import org.apache.commons.{ cli => acli }
+
 class ArgTestSuite extends FunSuite with ShouldMatchers {
   def equivTo(right: Type) = Matcher { (left: Type) =>
     MatchResult(left =:= right, 
@@ -88,6 +90,15 @@ class ArgTestSuite extends FunSuite with ShouldMatchers {
     val (arg, _) = checkArgConstruction("optionalIntMethod", term => OptionArg(term, 0))
     val im = currentMirror.reflect(this)
     arg.defaultValue(im) should be (None) 
+  }
+  test("Testing optional int argument parsing") {
+    val (arg, _) = checkArgConstruction("optionalIntMethod", term => OptionArg(term, 0))
+    val parser = new acli.PosixParser()
+    val cmdline = Array("-%s".format(arg.name), "5")
+    val options = new acli.Options
+    options.addOption(arg.cliOption)
+    val r = parser.parse(options, cmdline)
+    r.getOptionValue("arg") should be ("5")
   }
   
   test("Making an optional String argument using an extracted type") {

@@ -178,15 +178,91 @@ object Application {
   
   def makeRegistry = {
     val r = new ConverterRegistry[String]
+    registerDefaultConversions(r)
+    r
+  }
+  
+  def registerDefaultConversions(r: ConverterRegistry[String]) {
     r.register(s => java.lang.Integer.parseInt(s))
     r.register(s => java.lang.Double.parseDouble(s))
     r.register(s => java.lang.Boolean.parseBoolean(s))
     r.register(s => scala.math.BigDecimal(s))
     r.register(s => scala.math.BigInt(s))
-    r
+    r.register(s => s)
   }
+  
+  def makeOptions(args: List[MainArg]): acli.Options = {
+    val options = new acli.Options
+    args.collect {
+      case arg: NamedArg => arg
+    }.foreach { arg =>
+      options.addOption(arg.cliOption)
+    }
+    options
+  }  
 }
 
+trait Application {
+  /**
+   * Returns a fresh Apache Commons CLI PosixParser
+   * Override this method to use a different type of parser.
+   */
+  protected def makeParser: acli.CommandLineParser = new acli.PosixParser
+  
+  protected def registerCustomConversions(r: ConverterRegistry[String]) {
+    // nothing
+  }
+  
+  def main(cmdline: Array[String]) {
+    try {
+      val f = buildCommandFunction(cmdline)
+      f()
+    } catch {
+      case UsageError(msg) => print(msg) 
+    }
+  }
+  
+  private def buildCommandFunction(cmdline: Array[String]): Function0[Unit] = {
+    val mainMethodMirror = Application.findMainMethod(this)
+    val args = Application.extractArgs(mainMethodMirror.symbol)
+    val options = Application.makeOptions(args)
+    val parser = makeParser
+    val parsed = parser.parse(options, cmdline)   
+    
+    val positionalArgIndices = args.collect {
+      case p: PositionalArg => p  
+    }.zipWithIndex.map { t =>
+      val (arg, idx) = t
+      (arg.name, idx)
+    }.toMap
+    
+    val positionalArgValues = parsed.getArgs()
+    if (positionalArgIndices.size != positionalArgValues.length) {
+      throw UsageError("Received %d positional arguments and expected %d".format(positionalArgValues.length, positionalArgIndices.size))
+    } else {
+      val registry = Application.makeRegistry
+      registerCustomConversions(registry)
+      
+      val argArray: Array[Any] = args.map { arg => 
+        registry.get(arg.tpe) match {
+          case Some(cf) => {
+            val sValue = arg match {
+              case narg: NamedArg => parsed.getOptionValue(narg.name)
+              case parg: PositionalArg => parsed.getArgs()(positionalArgIndices(parg.name))
+            }         
+            cf(sValue)
+          }
+          case None => throw DesignError("No conversion to a %s for argument %s defined".format(arg.tpe.typeSymbol.name.decoded, arg.name))
+        }
+      }.toArray
+      
+      () => {
+        mainMethodMirror(argArray: _*)
+      }
+    }
+  }
+  
+}
 
 
 /**
