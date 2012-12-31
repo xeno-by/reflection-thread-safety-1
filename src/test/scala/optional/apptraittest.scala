@@ -41,4 +41,26 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     Test2.main(args)
   }
   
+  class Test3(ev1: Int, ev2: String) extends Application {
+    def main(p1: Int = 5, p2: String = "hello") {
+      p1 should be (ev1)
+      p2 should be (ev2)
+    }
+  }
+  test("default arguments with all present") {
+    val Test3 = new Test3(1, "2")
+    val args = Array("-p1", "1", "-p2", "2")
+    Test3.main(args)
+  }
+  test("default arguments with none present") {
+    val Test3 = new Test3(5, "hello")
+    val args = Array[String]()
+    Test3.main(args)
+  }
+  test("default arguments with one present, one missing") {
+    val Test3 = new Test3(5, "two")
+    val args = Array("-p2", "two")
+    Test3.main(args)
+  }
+  
 }

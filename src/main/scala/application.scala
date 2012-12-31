@@ -246,12 +246,18 @@ trait Application {
     } else {
       val registry = Application.makeRegistry
       registerCustomConversions(registry)
+      val im = currentMirror.reflect(this)
       
       val argArray: Array[Any] = args.map { arg => 
         registry.get(arg.tpe) match {
           case Some(cf) => {
             arg match {
               case oarg: OptionArg => if (parsed.hasOption(oarg.name)) Some(cf(parsed.getOptionValue(oarg.name))) else None
+              case darg: ArgWithDefault => if (parsed.hasOption(darg.name)) {
+                cf(parsed.getOptionValue(darg.name))
+              } else {
+                darg.defaultValue(im)
+              }
               case narg: NamedArg => cf(parsed.getOptionValue(narg.name))
               case parg: PositionalArg => cf(parsed.getArgs()(positionalArgIndices(parg.name)))
             }
