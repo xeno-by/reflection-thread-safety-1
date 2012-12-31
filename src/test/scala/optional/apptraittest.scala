@@ -85,4 +85,20 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     Test4.main(args)
   }
   
+  class Test5(ev1: Option[Boolean]) extends Application {
+    def main(p1: Option[Boolean]) {
+      p1 should be (ev1)
+    }
+  }
+  test("option arg with a type of boolean with arg specified") {
+    val Test5 = new Test5(Some(false))
+    val args = Array("-p1", "false")
+    Test5.main(args)
+  }
+  test("option arg with type of boolean with arg unspecified") {
+    val Test5 = new Test5(None)
+    val args = Array[String]()
+    Test5.main(args)
+  }
+  
 }
