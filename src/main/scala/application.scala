@@ -219,6 +219,10 @@ trait Application {
       f()
     } catch {
       case UsageError(msg) => print(msg) 
+      case ite: java.lang.reflect.InvocationTargetException => {
+        val toThrow = if (ite.getTargetException ne null) ite.getTargetException else ite
+        throw toThrow
+      }
     }
   }
   
@@ -246,11 +250,11 @@ trait Application {
       val argArray: Array[Any] = args.map { arg => 
         registry.get(arg.tpe) match {
           case Some(cf) => {
-            val sValue = arg match {
-              case narg: NamedArg => parsed.getOptionValue(narg.name)
-              case parg: PositionalArg => parsed.getArgs()(positionalArgIndices(parg.name))
-            }         
-            cf(sValue)
+            arg match {
+              case oarg: OptionArg => if (parsed.hasOption(oarg.name)) Some(cf(parsed.getOptionValue(oarg.name))) else None
+              case narg: NamedArg => cf(parsed.getOptionValue(narg.name))
+              case parg: PositionalArg => cf(parsed.getArgs()(positionalArgIndices(parg.name)))
+            }
           }
           case None => throw DesignError("No conversion to a %s for argument %s defined".format(arg.tpe.typeSymbol.name.decoded, arg.name))
         }
