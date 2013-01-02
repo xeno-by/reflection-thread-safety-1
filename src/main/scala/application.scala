@@ -358,7 +358,10 @@ trait Application {
     }
   }
   
-  /** padding inserted into usage message columns*/
+  /**
+   * padding inserted into usage message columns, defaults to 4 spaces
+   * Override this method to change the amount of padding
+   **/
   def pad: Int = 4
   
   def usageMessageHeader(posArgs: Seq[PositionalArg], optArgs: Seq[NamedArg]): String = {
@@ -369,9 +372,25 @@ trait Application {
     "%s:%s%s%s".format(name, optsStr, posArgSep, posArgMsg)     
   }
   
+  /**
+   * Label for the name column in the usage message, default value is "Name"
+   * Override this method to change the label 
+   **/
   def nameColumnHeader    = "Name"
+  /**
+   * Label for the default value column in the usage message, default value is "Default Value"
+   * Override this method to change the label
+   */
   def defaultColumnHeader = "Default Value"
+  /**
+   * Label for the type column in the usage message, the default value is "Type"
+   * Override this method to change the label
+   */
   def typeColumnHeader    = "Type"
+  /**
+   * Label for the usage column in the usage message, the default value is "Usage"
+   * Override this method to change the label
+   */
   def usageColumnHeader   = "Usage"
         
   def usageMessage(args: Seq[MainArg]): String = {
