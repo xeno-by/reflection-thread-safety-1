@@ -60,7 +60,17 @@ object MainArg {
         PositionalArg(term, index)
       }
     }    
-  } 
+  }
+  
+  def splitArgs(args: Seq[MainArg]): (Seq[PositionalArg], Seq[NamedArg]) = {
+    val pos = args.collect {
+      case parg: PositionalArg => parg
+    }
+    val named = args.collect {
+      case narg: NamedArg => narg
+    }
+    (pos, named)
+  }
 }
 
 sealed trait MainArg {
@@ -69,7 +79,7 @@ sealed trait MainArg {
   def tpe: Type
   final def typeName = tpe.typeSymbol.name.decoded
   def isOptional: Boolean
-  def usage: String
+  def usage: Option[String]
   def index: Int
   
   def =:=(other: MainArg): Boolean = name == other.name && 
@@ -104,7 +114,7 @@ case class OptionArg(term: TermSymbol, index: Int) extends DefaultArg {
     case OptionType(t) => t
   }
   def isOptional = true
-  def usage = "[--%s %s]".format(name, stringForType(tpe))
+  def usage = None
   val cliOption = new acli.Option(name, true, "TBD")
   def defaultValue(m: InstanceMirror) = None
 }
@@ -112,9 +122,9 @@ case class OptionArg(term: TermSymbol, index: Int) extends DefaultArg {
 case class ArgWithDefault(term: TermSymbol, index: Int) extends DefaultArg {
   val tpe = term.typeSignature
   def isOptional = false
-  def usage = "<%s: %s>".format(name, stringForType(tpe))
+  def usage = None
   
-  val cliOption = new acli.Option(name, true, usage)
+  val cliOption = new acli.Option(name, true, usage.getOrElse(""))
   
   def defaultValue(m: InstanceMirror): Any = {
     val baseMethodSym = term.owner
@@ -129,13 +139,13 @@ case class ArgWithDefault(term: TermSymbol, index: Int) extends DefaultArg {
 case class PositionalArg(term: TermSymbol, index: Int) extends MainArg {
   val tpe = term.typeSignature
   def isOptional = false
-  def usage = "<%s>".format(stringForType(tpe))
+  def usage = None
 }
 
 case class BoolArg(term: TermSymbol, index: Int) extends DefaultArg {
   val tpe = typeOf[Boolean]
   def isOptional = true
-  def usage = "[--%s]".format(name)
+  def usage = None
   val cliOption = new acli.Option(name, false, "include if true, omit if false")
   
   def defaultValue(m: InstanceMirror) = false
@@ -225,6 +235,23 @@ trait Application {
     // nothing
   }
   
+  /**
+   * Adds a flag called "help" which will trigger usage to be printing to the console
+   * Override this method to return None if no help flag is desired
+   * Override this method to return Some("flagName") if a different name is desired
+   */
+  protected def helpFlag: Option[String] = Some("help")
+  
+  /**
+   * Returns the name of this class to be used in usage messages
+   * Override this method if a different name is desired.
+   */
+  def programName: String = {
+    val im = currentMirror.reflect(this)
+    val sym = im.symbol
+    sym.name.decoded
+  }
+  
   /** override to return a false value in order to have usage errors thrown (useful for testing) */
   protected def catchUsageError: Boolean = true
   
@@ -241,12 +268,23 @@ trait Application {
     }
   }
   
-  private def buildCommandFunction(cmdline: Array[String]): Function0[Unit] = {
+  protected def buildCommandFunction(cmdline: Array[String]): Function0[Unit] = {
     val mainMethodMirror = Application.findMainMethod(this)
     val args = Application.extractArgs(mainMethodMirror.symbol)
-    val options = Application.makeOptions(args)
+    val options = {
+      val r = Application.makeOptions(args)
+      helpFlag.map { name =>
+        val opt = new acli.Option(name, false, "display usage information (this message)")
+        r.addOption(opt)
+      }
+      r
+    }
     val parser = makeParser
-    val parsed = parser.parse(options, cmdline)   
+    val parsed = parser.parse(options, cmdline)
+    for(name <- helpFlag if parsed.hasOption(name)) {
+      val msg = usageMessage(args)
+      throw UsageError(msg)
+    }
     
     val positionalArgIndices = args.collect {
       case p: PositionalArg => p  
@@ -319,6 +357,73 @@ trait Application {
       Failure(ue)
     }
   }
+  
+  /** padding inserted into usage message columns*/
+  def pad: Int = 4
+  
+  def usageMessageHeader(posArgs: Seq[PositionalArg], optArgs: Seq[NamedArg]): String = {
+    val name = programName
+    val posArgMsg = positionalArgMsg(posArgs)
+    val posArgSep = if (posArgs.isEmpty) "" else " "
+    val optsStr = if (optArgs.isEmpty) "" else " [options]"      
+    "%s:%s%s%s".format(name, optsStr, posArgSep, posArgMsg)     
+  }
+  
+  def nameColumnHeader    = "Name"
+  def defaultColumnHeader = "Default Value"
+  def typeColumnHeader    = "Type"
+  def usageColumnHeader   = "Usage"
+        
+  def usageMessage(args: Seq[MainArg]): String = {
+    val (posArgs, optArgs) = MainArg.splitArgs(args)
+
+    val header = usageMessageHeader(posArgs, optArgs)
+    
+    val optMsg = if (optArgs.isEmpty) "" else {
+      val im = currentMirror.reflect(this)
+      val defaults = optArgs.map { arg =>
+        arg match {
+          case darg: ArgWithDefault => {
+            val dvs = darg.defaultValue(im).toString //TODO: may want to define inverse converters instead
+            (darg.name, dvs)
+          }
+          case narg => (narg.name, "")
+        }
+      }.toMap
+
+      val optFormat = {
+        val nameWidth = {
+          val widestName = optArgs.map(_.name.length).max
+          scala.math.max(nameColumnHeader.length, widestName) + pad
+        }
+        val typeWidth = {
+          val widestTypeName = optArgs.map(_.typeName.length).max
+          scala.math.max(typeColumnHeader.length, widestTypeName) + pad
+        }
+        val defaultWidth = {
+          val widestDefaultValue = defaults.valuesIterator.map(_.length).max
+          scala.math.max(defaultColumnHeader.length, widestDefaultValue) + pad
+        }
+        "%1$-" + nameWidth + "s%2$-" + typeWidth + "s%3$-" + defaultWidth + "s%4$s"
+     }
+     val header = optFormat.format(nameColumnHeader, typeColumnHeader, defaultColumnHeader, usageColumnHeader)
+     val rows = optArgs.map { arg =>
+       optFormat.format(arg.name, arg.typeName, defaults(arg.name), "TODO - Usage")
+     }.mkString("\n")
+     "%s\n%s".format(header, rows)
+   }
+
+    
+    
+    
+    ""
+  }
+
+  
+  def positionalArgMsg(args: Seq[PositionalArg]): String = args.map(positionalArgUsageString _).mkString(" ")
+  
+  def positionalArgUsageString(arg: PositionalArg): String = "<%s: %s>".format(arg.name, arg.typeName)
+  
 }
 
 

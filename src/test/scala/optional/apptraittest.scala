@@ -13,7 +13,7 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
   }
   
   
-  class Test1(ev1: Int, ev2: String) extends TestApp {
+  class Test1(ev1: Int = 1, ev2: String = "2") extends TestApp {
     def main(pos1: Int, pos2: String) {
       pos1 should be (1)
       pos2 should be ("2")
@@ -40,8 +40,23 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     } should produce [UsageError]
     //thrown.msg should be ("Malformed argument value \"one\" for pos1 of type Int:\nthe value \"one\" could not be converted into an integer\nUsage: <Int>")
   }
+  test("test program name") {
+    val Test1 = new Test1(1, "2")
+    Test1.programName should be ("Test1")
+  }
   
-  class Test2(ev1: Option[Int], ev2: Option[String]) extends TestApp {
+  def checkUsageMessageHeader(expected: String, app: TestApp) {
+    val mm = Application.findMainMethod(app)
+    val (posArgs, namedArgs) = MainArg.splitArgs(Application.extractArgs(mm.symbol))
+    val r = app.usageMessageHeader(posArgs, namedArgs)
+    r should be (expected)
+  }
+  
+  test("test usage message header with just positional arguments") {
+    checkUsageMessageHeader("Test1: <pos1: Int> <pos2: String>", new Test1)
+  }
+  
+  class Test2(ev1: Option[Int] = None, ev2: Option[String] = None) extends TestApp {
     def main(opt1: Option[Int], opt2: Option[String]) {
       opt1 should be (ev1)
       opt2 should be (ev2)
@@ -62,9 +77,12 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val args = Array("-opt2", "2")
     Test2.main(args)
   }
+  test("usage message header for just Option arguments") {
+    checkUsageMessageHeader("Test2: [options]", new Test2)
+  }
   
-  class Test3(ev1: Int, ev2: String) extends TestApp {
-    def main(p1: Int = 5, p2: String = "hello") {
+  class Test3(ev1: Int = 5, ev2: String = "hello") extends TestApp {
+    def main(p1: Int = ev1, p2: String = ev2) {
       p1 should be (ev1)
       p2 should be (ev2)
     }
@@ -84,8 +102,11 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val args = Array("-p2", "two")
     Test3.main(args)
   }
+  test("usage message header for just arguments with defaults") {
+    checkUsageMessageHeader("Test3: [options]", new Test3)
+  }
   
-  class Test4(ev1: Boolean, ev2: Boolean) extends TestApp {
+  class Test4(ev1: Boolean = false, ev2: Boolean = false) extends TestApp {
     def main(p1: Boolean, p2: Boolean) {
       p1 should be (ev1)
       p2 should be (ev2)
@@ -106,6 +127,9 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val args = Array[String]("-p2")
     Test4.main(args)
   }
+  test("usage message beader for just boolean arguments") {
+    checkUsageMessageHeader("Test4: [options]", new Test4)
+  }
   
   class Test5(ev1: Option[Boolean]) extends TestApp {
     def main(p1: Option[Boolean]) {
@@ -121,6 +145,16 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val Test5 = new Test5(None)
     val args = Array[String]()
     Test5.main(args)
+  }
+  
+  class Test6(ev1: Int = 1, ev2: Boolean = false) extends TestApp {
+    def main(pos1: Int, b1: Boolean) {
+      pos1 should be (ev1)
+      b1 should be (ev2)
+    }
+  }
+  test("usage header with one positional and one boolean") {
+    checkUsageMessageHeader("Test6: [options] <pos1: Int>", new Test6)
   }
   
 }
