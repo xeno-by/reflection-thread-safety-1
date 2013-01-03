@@ -1,3 +1,8 @@
+Comment out "parallelExecution in Test := false " in build.sbt, then run the tests you should see non-deterministic failures. 
+Just run test repeatedly and watch.
+
+*************
+
 optional is a command line option parser and library.
 
 YOU WRITE:
