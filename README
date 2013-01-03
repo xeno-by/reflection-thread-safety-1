@@ -1,5 +1,4 @@
-Comment out "parallelExecution in Test := false " in build.sbt, then run the tests you should see non-deterministic failures. 
-Just run test repeatedly and watch.
+Comment out "parallelExecution in Test := false " in build.sbt, then run the tests you should see non-deterministic failures. Just run test repeatedly and watch.
 
 *************
 
