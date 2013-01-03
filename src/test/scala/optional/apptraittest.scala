@@ -56,6 +56,17 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     checkUsageMessageHeader("Test1: <pos1: Int> <pos2: String>", new Test1)
   }
   
+  def checkUsageMessage(expected: String, app: TestApp) {
+    val mm = Application.findMainMethod(app)
+    val args = Application.extractArgs(mm.symbol)
+    val r = app.usageMessage(args)
+    r should be (expected)
+  }
+  
+  test("usage message with just positional arguments") {
+    checkUsageMessage("Test1: <pos1: Int> <pos2: String>", new Test1)
+  }
+  
   class Test2(ev1: Option[Int] = None, ev2: Option[String] = None) extends TestApp {
     def main(opt1: Option[Int], opt2: Option[String]) {
       opt1 should be (ev1)
@@ -79,6 +90,11 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
   }
   test("usage message header for just Option arguments") {
     checkUsageMessageHeader("Test2: [options]", new Test2)
+  }
+  test("usage message for just Option arguments") {
+    val header = "Test2: [options]"
+    val namedTableHeader = ""
+    
   }
   
   class Test3(ev1: Int = 5, ev2: String = "hello") extends TestApp {

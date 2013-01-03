@@ -230,6 +230,13 @@ trait Application {
    */
   protected def makeParser: acli.CommandLineParser = new acli.PosixParser
   
+  /**
+   * Prefix for named arguments, defaults to "-"
+   * Override this method to change the prefix.  It should correspond to what's used by
+   * the Apache Commons CLI parser that is used.
+   */
+  def namedArgumentPrefix = "-"
+  
   /** override this method to register any additional converters for processing arguments */
   protected def registerCustomConversions(r: ConverterRegistry[String]) {
     // nothing
@@ -394,48 +401,53 @@ trait Application {
   def usageColumnHeader   = "Usage"
         
   def usageMessage(args: Seq[MainArg]): String = {
-    val (posArgs, optArgs) = MainArg.splitArgs(args)
+    val (posArgs, namedArgs) = MainArg.splitArgs(args)
+    val header = usageMessageHeader(posArgs, namedArgs)
+    val namedMsg = makeNamedArgsUsageMsg(namedArgs) 
+    if (namedMsg.isEmpty) header else "%s\n%s".format(header, namedMsg)
+  }
+  
+  def makeNamedArgsUsageMsg(namedArgs: Seq[NamedArg]): String = if (namedArgs.isEmpty) "" else {
+    val im = currentMirror.reflect(this)
+    val defaults = namedArgs.map { arg =>
+      arg match {
+        case darg: ArgWithDefault => {
+          val dvs = darg.defaultValue(im).toString //TODO: may want to define inverse converters instead
+          (darg.name, dvs)
+        }
+        case narg => (narg.name, "")
+      }
+    }.toMap
 
-    val header = usageMessageHeader(posArgs, optArgs)
-    
-    val optMsg = if (optArgs.isEmpty) "" else {
-      val im = currentMirror.reflect(this)
-      val defaults = optArgs.map { arg =>
-        arg match {
-          case darg: ArgWithDefault => {
-            val dvs = darg.defaultValue(im).toString //TODO: may want to define inverse converters instead
-            (darg.name, dvs)
-          }
-          case narg => (narg.name, "")
-        }
-      }.toMap
-
-      val optFormat = {
-        val nameWidth = {
-          val widestName = optArgs.map(_.name.length).max
-          scala.math.max(nameColumnHeader.length, widestName) + pad
-        }
-        val typeWidth = {
-          val widestTypeName = optArgs.map(_.typeName.length).max
-          scala.math.max(typeColumnHeader.length, widestTypeName) + pad
-        }
-        val defaultWidth = {
-          val widestDefaultValue = defaults.valuesIterator.map(_.length).max
-          scala.math.max(defaultColumnHeader.length, widestDefaultValue) + pad
-        }
-        "%1$-" + nameWidth + "s%2$-" + typeWidth + "s%3$-" + defaultWidth + "s%4$s"
-     }
-     val header = optFormat.format(nameColumnHeader, typeColumnHeader, defaultColumnHeader, usageColumnHeader)
-     val rows = optArgs.map { arg =>
-       optFormat.format(arg.name, arg.typeName, defaults(arg.name), "TODO - Usage")
-     }.mkString("\n")
-     "%s\n%s".format(header, rows)
-   }
-
-    
-    
-    
-    ""
+    val optFormat = makeOptionFormatString(namedArgs, defaults) 
+    val header = optFormat.format(nameColumnHeader, typeColumnHeader, defaultColumnHeader, usageColumnHeader)
+    val rows = namedArgs.map(makeOptionArgUsageRow(_, defaults, optFormat)).mkString("\n")
+    "%s\n%s".format(header, rows)
+  }
+  
+  def makeOptionArgUsageRow(arg: NamedArg, defaults: Map[String, String], optFormat: String) = {
+    val nameUsage = "%s%s".format(namedArgumentPrefix, arg.name)
+    val usage = arg match {
+      case barg: BoolArg => nameUsage
+      case _ => "%s <%s>".format(nameUsage, arg.typeName)
+    }
+    optFormat.format(arg.name, arg.typeName, defaults(arg.name), usage)
+  }
+  
+  def makeOptionFormatString(optArgs: Seq[NamedArg], defaults: Map[String, String]) = {
+    val nameWidth = {
+      val widestName = optArgs.map(_.name.length).max
+      scala.math.max(nameColumnHeader.length, widestName) + pad
+    }
+    val typeWidth = {
+      val widestTypeName = optArgs.map(_.typeName.length).max
+      scala.math.max(typeColumnHeader.length, widestTypeName) + pad
+    }
+    val defaultWidth = {
+      val widestDefaultValue = defaults.valuesIterator.map(_.length).max
+      scala.math.max(defaultColumnHeader.length, widestDefaultValue) + pad
+    }
+    "%1$-" + nameWidth + "s%2$-" + typeWidth + "s%3$-" + defaultWidth + "s%4$s"    
   }
 
   
