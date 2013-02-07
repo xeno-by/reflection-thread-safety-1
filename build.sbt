@@ -10,6 +10,6 @@ libraryDependencies += "org.scala-lang" % "scala-reflect" % "2.10.0"
 
 libraryDependencies += "commons-cli" % "commons-cli" % "1.2"
 
-parallelExecution in Test := false
+//parallelExecution in Test := false
 
 
